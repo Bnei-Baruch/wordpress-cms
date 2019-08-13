@@ -1,2 +1,4 @@
 .idea/**
 *.zip
+node_modules
+yarn-error.log

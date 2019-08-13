@@ -36,3 +36,18 @@ URL: banner-en?meta=header,sub-header,link
 Pages of Topics:
 ---------------------------
 URL: topic-kCsbv1TM?meta=recommended-en,recommended-es(unit,unit,unit,unit),description-es,description-en
+
+REST API password for wordpress:
+-----------------------------------
+- plugin: Application Passwords
+- password: NKcY 5nTQ WYFe aB4X YDiY bwFg
+
+Custom Post/Taxonomy Type Generator:
+---------------------------
+https://www.wp-hasty.com/tools/wordpress-custom-post-type-generator/
+
+https://www.wp-hasty.com/tools/wordpress-taxonomy-generator/
+
+A JavaScript Client for the WordPress REST API
+------------------------------------
+http://wp-api.org/node-wpapi/
