@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PhpIncludePathManager">
+    <include_path>
+      <path value="$PROJECT_DIR$/wp-graphql-0.3.5/vendor/ivome/graphql-relay-php" />
+      <path value="$PROJECT_DIR$/wp-graphql-0.3.5/vendor/webonyx/graphql-php" />
+      <path value="$PROJECT_DIR$/wp-graphql-0.3.5/vendor/composer" />
+    </include_path>
+  </component>
+</project>

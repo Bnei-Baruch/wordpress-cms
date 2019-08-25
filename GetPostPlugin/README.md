@@ -25,13 +25,13 @@ https://wordpress.org/plugins/wp-all-import/
 
 https://wordpress.org/plugins/wp-ultimate-csv-importer/
 
-Pages of Persons:
+Posts of type Person:
 ---------------------------
-URL: persons-ari-en-html
+URL: ari-en
 
-Pages of Banners:
+Posts of type Banner:
 ---------------------------
-URL: banner-en?meta=header,sub-header,link
+URL: en
 
 Pages of Topics:
 ---------------------------
@@ -41,12 +41,6 @@ REST API password for wordpress:
 -----------------------------------
 - plugin: Application Passwords
 - password: NKcY 5nTQ WYFe aB4X YDiY bwFg
-
-Custom Post/Taxonomy Type Generator:
----------------------------
-https://www.wp-hasty.com/tools/wordpress-custom-post-type-generator/
-
-https://www.wp-hasty.com/tools/wordpress-taxonomy-generator/
 
 A JavaScript Client for the WordPress REST API
 ------------------------------------
