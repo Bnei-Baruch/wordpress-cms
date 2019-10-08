@@ -134,24 +134,6 @@ class Post {
 }
 
 class Banner {
-	private $req_meta = [ 'header', 'sub-header', 'link', 'image' ];
-
-	private function get_meta( $post_id ) {
-		$all_meta = get_post_custom( $post_id );
-		$meta     = array();
-		foreach ( $all_meta as $key => $value ) {
-			if ( in_array( $key, $this->req_meta, true ) ) {
-				if ( $key != 'image' ) {
-					$meta[ $key ] = $value[0];
-				} else {
-					$meta[ $key ] = wp_get_attachment_image_src( $value[0], 'full' )[0];
-				}
-			}
-		}
-
-		return $meta;
-	}
-
 	public function get_banner_content( $request ) {
 		$parameters = $request->get_params();
 		$slug       = $parameters['slug'];
@@ -167,9 +149,17 @@ class Banner {
 			return [];
 		}
 
-		$meta = $this->get_meta( $posts[0]->ID );
+		$banner = $posts[0];
+		$image  = wp_get_attachment_image_src( $banner->image, 'full' )[0];
 
-		return [ 'meta' => $meta ];
+		return [
+			'meta' => array(
+				'header'     => $banner->header,
+				'link'       => $banner->link,
+				'sub-header' => $banner->sub_header,
+				'image'      => $image,
+			)
+		];
 	}
 
 	public function get_banners_content( $request ) {
@@ -185,16 +175,18 @@ class Banner {
 		}
 
 		$banners = array();
-//		$banners[] = array(
-//			'total' => count( $posts )
-//		);
-		foreach ( $posts as $post ) {
-			$meta      = $this->get_meta( $post->ID );
+		foreach ( $posts as $banner ) {
+			$image     = wp_get_attachment_image_src( $banner->image, 'full' )[0];
 			$banners[] = array(
-				'id'    => $post->ID,
-				'slug'  => $post->post_name,
-				'title' => $post->post_title,
-				'meta'  => $meta,
+				'id'    => $banner->ID,
+				'slug'  => $banner->post_name,
+				'title' => $banner->post_title,
+				'meta'  => array(
+					'header'     => $banner->header,
+					'link'       => $banner->link,
+					'sub-header' => $banner->sub_header,
+					'image'      => $image,
+				),
 			);
 		}
 
@@ -320,6 +312,170 @@ class Person {
 	}
 }
 
+class Source {
+	private function one_source( $source, $skip_content ) {
+		return [
+			'id'       => $source->ID,
+			'slug'     => $source->post_name,
+			'title'    => $source->title,
+			'unit'     => $source->unit,
+			'language' => $source->language,
+			'md5'      => $source->md5,
+			'content'  => $skip_content ? "" : strip_html_comments( $source->post_content ),
+		];
+	}
+
+	public function get_source( $request ) {
+		$parameters = $request->get_params();
+		$slug       = $parameters['slug'];
+		$args       = array(
+			'name'                   => $slug,
+			'post_type'              => 'source',
+			'post_status'            => 'publish',
+			'numberofposts'          => 10,
+			'update_post_term_cache' => false,
+		);
+		$posts      = get_posts( $args );
+		if ( ! $posts ) {
+			return [];
+		}
+
+		$parameters   = $request->get_params();
+		$skip_content = $parameters['skip_content'] == 'true';
+
+		return [ $this->one_source( $posts[0], $skip_content ) ];
+	}
+
+	public function delete_sources() {
+		$args = array(
+			'post_type'              => 'source',
+			'post_status'            => 'publish',
+			'update_post_term_cache' => false,
+			'numberposts'            => 1000,
+		);
+
+		$posts = get_posts( $args );
+
+		foreach ( $posts as $post ) {
+			// Delete's each post.
+			wp_delete_post( $post->ID, true );
+			// Set to False if you want to send them to Trash.
+		}
+
+		return 'Deleted ' . count( $posts );
+	}
+
+	public function get_sources( $request ) {
+		$parameters = $request->get_params();
+		$page       = $parameters['page'];
+		$args       = array(
+			'posts_per_page'         => 1000,
+			'orderby'                => 'slug',
+			'order'                  => 'ASC',
+			'post_type'              => 'source',
+			'post_status'            => 'publish',
+			'update_post_term_cache' => false,
+			'paged'                  => $page,
+		);
+		$posts      = get_posts( $args );
+		if ( ! $posts ) {
+			return [];
+		}
+
+		$skip_content = $parameters['skip_content'] == 'true';
+		$sources = array();
+		foreach ( $posts as $source ) {
+			$sources[] = $this->one_source( $source, $skip_content );
+		}
+
+		return $sources;
+	}
+
+	public function set_source( $request ) {
+		$params  = $request->get_json_params();
+		$post    = array(
+			'post_type'    => 'source',
+			'ID'           => $params['id'],
+			'post_slug'    => $params['slug'],
+			'post_title'   => $params['title'],
+			'post_content' => $params['content'],
+			'post_status'  => 'publish',
+		);
+		$post_id = wp_insert_post( $post, true );
+		if ( is_wp_error( $post_id ) ) {
+			$errors = $post_id->get_error_messages();
+
+			return array( 'code' => "error", 'message' => $errors );
+		}
+
+		update_field( 'title', $params['title'], $post_id );
+		update_field( 'unit', $params['unit'], $post_id );
+		update_field( 'language', $params['language'], $post_id );
+		update_field( 'md5', $params['md5'], $post_id );
+
+		return array( 'code' => 'success', 'message' => '', 'data' => array( 'post_id' => $post_id ) );
+	}
+
+	public function source_endpoints() {
+		register_rest_route(
+			'get-post-plugin/v1', '/get-source/(?P<slug>.+)',
+			array(
+				'methods'  => 'GET',
+				'callback' => [ $this, 'get_source' ],
+				'args'     => array(
+					'slug'         => array(
+						'required' => true,
+					),
+					'skip_content' => array(
+						'required' => false,
+						'default'  => 'false',
+					),
+				),
+			)
+		);
+		register_rest_route(
+			'get-post-plugin/v1', '/set-source',
+			array(
+				'methods'  => 'POST',
+				'callback' => [ $this, 'set_source' ],
+				'args'     => array(
+					'id'       => array(),
+					'slug'     => array(),
+					'unit'     => array(),
+					'language' => array(),
+					'md5'      => array(),
+					'content'  => array(),
+				),
+			)
+		);
+		register_rest_route(
+			'get-post-plugin/v1', '/get-sources',
+			array(
+				'methods'  => 'GET',
+				'callback' => [ $this, 'get_sources' ],
+				'args'     => array(
+					'page' => array(
+						'required' => false,
+						'default'  => 1
+					),
+					'skip_content' => array(
+						'required' => false,
+						'default'  => 'false',
+					),
+				),
+			)
+		);
+		register_rest_route(
+			'get-post-plugin/v1', '/delete-sources',
+			array(
+				'methods'  => 'POST',
+				'callback' => [ $this, 'delete_sources' ],
+				'args'     => array(),
+			)
+		);
+	}
+}
+
 function strip_html_comments( $html ) {
 	return preg_replace( '/<!--(.*)-->/Uis', '', $html );
 }
@@ -332,6 +488,9 @@ add_action( 'rest_api_init', [ $banner, 'banner_endpoints' ] );
 
 $person = new Person();
 add_action( 'rest_api_init', [ $person, 'person_endpoints' ] );
+
+$source = new Source();
+add_action( 'rest_api_init', [ $source, 'source_endpoints' ] );
 
 // CORS -- enable to access api for everyone
 remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
@@ -356,5 +515,15 @@ add_action( 'init', function () {
 		'public'       => true,
 		'label'        => 'Persons',
 		'show_in_rest' => true,
+	] );
+} );
+
+add_action( 'init', function () {
+	register_post_type( 'source', [
+		'public'                => true,
+		'label'                 => 'Sources',
+		'show_in_rest'          => true,
+		'rest_base'             => 'source',
+		'rest_controller_class' => 'WP_REST_Posts_Controller'
 	] );
 } );

@@ -40,7 +40,7 @@ URL: topic-kCsbv1TM?meta=recommended-en,recommended-es(unit,unit,unit,unit),desc
 REST API password for wordpress:
 -----------------------------------
 - plugin: Application Passwords
-- password: NKcY 5nTQ WYFe aB4X YDiY bwFg
+- password: wJVW RdXm cqod tven VCn0 dPNV
 
 A JavaScript Client for the WordPress REST API
 ------------------------------------
