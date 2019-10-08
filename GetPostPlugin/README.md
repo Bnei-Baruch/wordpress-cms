@@ -45,3 +45,8 @@ REST API password for wordpress:
 A JavaScript Client for the WordPress REST API
 ------------------------------------
 http://wp-api.org/node-wpapi/
+
+Plugins to use
+---------------------
+* Advanced Custom Fields
+* Application Passwords
