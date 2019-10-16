@@ -405,13 +405,15 @@ class Source {
 	public function get_sources( $request ) {
 		$parameters = $request->get_params();
 		$page       = $parameters['page'];
+		$skip_content = $parameters['skip_content'] == 'true';
+
 		$args       = array(
 			'post_type'              => 'source',
 			'meta_key'               => 'xslug',
 			'order_by'               => 'meta_value',
 			'order'                  => 'ASC',
 			'post_status'            => 'publish',
-			'posts_per_page'         => 1000,
+			'posts_per_page'         => $skip_content ? 1000 : 100,
 			'update_post_term_cache' => false,
 			'paged'                  => $page,
 		);
@@ -420,7 +422,6 @@ class Source {
 			return [];
 		}
 
-		$skip_content = $parameters['skip_content'] == 'true';
 		$sources      = array();
 		foreach ( $posts as $source ) {
 			$sources[] = $this->one_source( $source, $skip_content );
