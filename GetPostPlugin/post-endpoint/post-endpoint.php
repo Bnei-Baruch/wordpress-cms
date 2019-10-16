@@ -99,6 +99,33 @@ class Post {
 		return $items;
 	}
 
+	public function get_images( $request ) {
+		$parameters = $request->get_params();
+		$page       = $parameters['page'];
+		$args       = array(
+			'post_type'              => 'attachment',
+			'numberofposts'          => - 1,
+			'post_status'            => null,
+			'post_parent'            => null, // any parent
+			'post_mime_type'         => 'image',
+			'posts_per_page'         => 1000,
+			'update_post_term_cache' => false,
+			'paged'                  => $page,
+		);
+
+		$posts = get_posts( $args );
+		if ( ! $posts ) {
+			return [];
+		}
+
+		$images = array();
+		foreach ( $posts as $post ) {
+			$images[] = $post->guid;
+		}
+
+		return $images;
+	}
+
 	public function post_endpoints() {
 		register_rest_route(
 			'get-post-plugin/v1', '/get-post/(?P<slug>.+)',
@@ -126,6 +153,19 @@ class Post {
 					),
 					'meta' => array(
 						'required' => false,
+					),
+				),
+			)
+		);
+		register_rest_route(
+			'get-post-plugin/v1', '/get-images/',
+			array(
+				'methods'  => 'GET',
+				'callback' => [ $this, 'get_images' ],
+				'args'     => array(
+					'page' => array(
+						'required' => false,
+						'default'  => 1
 					),
 				),
 			)
@@ -315,24 +355,26 @@ class Person {
 class Source {
 	private function one_source( $source, $skip_content ) {
 		return [
-			'id'       => $source->ID,
-			'slug'     => $source->post_name,
-			'title'    => $source->title,
-			'unit'     => $source->unit,
-			'language' => $source->language,
-			'md5'      => $source->md5,
-			'content'  => $skip_content ? "" : strip_html_comments( $source->post_content ),
+			'id'          => $source->ID,
+			'title'       => $source->post_title,
+			'content'     => $skip_content ? "" : strip_html_comments( $source->post_content ),
+			// Custom fields
+			'xslug'       => $source->xslug,
+			'uid'         => $source->uid,
+			'language'    => $source->language,
+			'md5'         => $source->md5,
+			'attachments' => $source->attachments,
 		];
 	}
 
 	public function get_source( $request ) {
 		$parameters = $request->get_params();
-		$slug       = $parameters['slug'];
 		$args       = array(
-			'name'                   => $slug,
 			'post_type'              => 'source',
+			'meta_key'               => 'xslug',
+			'meta_value'             => $parameters['xslug'],
 			'post_status'            => 'publish',
-			'numberofposts'          => 10,
+			'numberofposts'          => - 1,
 			'update_post_term_cache' => false,
 		);
 		$posts      = get_posts( $args );
@@ -347,33 +389,29 @@ class Source {
 	}
 
 	public function delete_sources() {
-		$args = array(
-			'post_type'              => 'source',
-			'post_status'            => 'publish',
-			'update_post_term_cache' => false,
-			'numberposts'            => 1000,
-		);
+		global $wpdb;
 
-		$posts = get_posts( $args );
-
-		foreach ( $posts as $post ) {
-			// Delete's each post.
-			wp_delete_post( $post->ID, true );
-			// Set to False if you want to send them to Trash.
+		$query    = "SELECT ID FROM $wpdb->posts WHERE post_type = 'source'";
+		$post_ids = $wpdb->get_col( $query );
+		$cnt      = count( $post_ids );
+		foreach ( $post_ids as $id ) {
+			wp_delete_post( $id, true );
+			// wp_delete_attachment( $id, true )
 		}
 
-		return 'Deleted ' . count( $posts );
+		return "Deleted $cnt Sources";
 	}
 
 	public function get_sources( $request ) {
 		$parameters = $request->get_params();
 		$page       = $parameters['page'];
 		$args       = array(
-			'posts_per_page'         => 1000,
-			'orderby'                => 'slug',
-			'order'                  => 'ASC',
 			'post_type'              => 'source',
+			'meta_key'               => 'xslug',
+			'order_by'               => 'meta_value',
+			'order'                  => 'ASC',
 			'post_status'            => 'publish',
+			'posts_per_page'         => 1000,
 			'update_post_term_cache' => false,
 			'paged'                  => $page,
 		);
@@ -383,7 +421,7 @@ class Source {
 		}
 
 		$skip_content = $parameters['skip_content'] == 'true';
-		$sources = array();
+		$sources      = array();
 		foreach ( $posts as $source ) {
 			$sources[] = $this->one_source( $source, $skip_content );
 		}
@@ -396,7 +434,7 @@ class Source {
 		$post    = array(
 			'post_type'    => 'source',
 			'ID'           => $params['id'],
-			'post_slug'    => $params['slug'],
+			'post_slug'    => $params['xslug'],
 			'post_title'   => $params['title'],
 			'post_content' => $params['content'],
 			'post_status'  => 'publish',
@@ -408,8 +446,8 @@ class Source {
 			return array( 'code' => "error", 'message' => $errors );
 		}
 
-		update_field( 'title', $params['title'], $post_id );
-		update_field( 'unit', $params['unit'], $post_id );
+		update_field( 'xslug', $params['xslug'], $post_id );
+		update_field( 'uid', $params['uid'], $post_id );
 		update_field( 'language', $params['language'], $post_id );
 		update_field( 'md5', $params['md5'], $post_id );
 
@@ -418,12 +456,12 @@ class Source {
 
 	public function source_endpoints() {
 		register_rest_route(
-			'get-post-plugin/v1', '/get-source/(?P<slug>.+)',
+			'get-post-plugin/v1', '/get-source/(?P<xslug>.+)',
 			array(
 				'methods'  => 'GET',
 				'callback' => [ $this, 'get_source' ],
 				'args'     => array(
-					'slug'         => array(
+					'xslug'        => array(
 						'required' => true,
 					),
 					'skip_content' => array(
@@ -440,8 +478,8 @@ class Source {
 				'callback' => [ $this, 'set_source' ],
 				'args'     => array(
 					'id'       => array(),
-					'slug'     => array(),
-					'unit'     => array(),
+					'xslug'    => array(),
+					'uid'      => array(),
 					'language' => array(),
 					'md5'      => array(),
 					'content'  => array(),
@@ -454,7 +492,7 @@ class Source {
 				'methods'  => 'GET',
 				'callback' => [ $this, 'get_sources' ],
 				'args'     => array(
-					'page' => array(
+					'page'         => array(
 						'required' => false,
 						'default'  => 1
 					),
